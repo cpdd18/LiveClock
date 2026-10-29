@@ -1,14 +1,15 @@
 # XcodeGen 工程描述文件。
 # 不在仓库中保存 .xcodeproj（pbxproj 不适合在 Windows 上手改）；
-# 云端 Mac 构建时执行 `xcodegen generate` 生成工程，再 xcodebuild archive。
+# 云端 Mac 构建时执行 `xcodegen generate` 生成工程，再 xcodebuild 构建/归档。
 #
 # 占位标识符（替换为你付费开发者账号下的真实值，详见 README“占位符替换清单”）：
 #   com.example.liveclock          主 App Bundle ID
 #   com.example.liveclock.widget   Widget Extension Bundle ID
 #   group.com.example.liveclock    App Group
 #
-# 签名相关环境变量由 GitHub Actions 注入（见 .github/workflows/build-ipa.yml）：
-#   DEVELOPMENT_TEAM / APP_PROFILE_NAME / WIDGET_PROFILE_NAME
+# 签名说明：本文件不写死签名方式；
+#   模拟器构建（compile-only / simulator-preview）由命令行传 CODE_SIGNING_ALLOWED=NO 并清空签名键；
+#   真机签名（signed-ipa）由 workflow 命令行传 Manual / Identity / Profile。
 
 name: LiveClock
 
@@ -21,8 +22,6 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    CODE_SIGN_STYLE: Manual
-    DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
 
 targets:
   LiveClock:
@@ -30,6 +29,9 @@ targets:
     platform: iOS
     sources:
       - path: App
+        excludes:
+          - "*.plist"
+          - "*.entitlements"
       - path: Shared
     resources:
       - path: Resources/Assets.xcassets
@@ -37,9 +39,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.liveclock
         INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: App/LiveClock.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_IDENTITY: ${APP_SIGN_IDENTITY}
         PROVISIONING_PROFILE_SPECIFIER: ${APP_PROFILE_NAME}
     dependencies:
@@ -51,12 +53,17 @@ targets:
     platform: iOS
     sources:
       - path: Widget
+        excludes:
+          - "*.plist"
+          - "*.entitlements"
       - path: Shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.liveclock.widget
         INFOPLIST_FILE: Widget/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: Widget/ClockWidget.entitlements
         SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
         CODE_SIGN_IDENTITY: ${WIDGET_SIGN_IDENTITY}
         PROVISIONING_PROFILE_SPECIFIER: ${WIDGET_PROFILE_NAME}

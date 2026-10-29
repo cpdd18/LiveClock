@@ -49,7 +49,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Select latest usable Xcode
         run: |
@@ -83,6 +83,10 @@ jobs:
             -destination "platform=iOS Simulator,name=$sim_name" \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             -derivedDataPath build/derivedData
 
   # ---------- 模式：模拟器预览截图（无证书，自测 UI 布局） ----------
@@ -92,7 +96,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Select latest usable Xcode
         run: |
@@ -135,11 +139,17 @@ jobs:
             -destination "platform=iOS Simulator,name=$SIM_NAME" \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             -derivedDataPath build/dd
 
       - name: Install, launch and capture screenshots
         run: |
           set -euo pipefail
+          echo "=== Products tree for diagnosis ==="
+          find build/dd/Build/Products -maxdepth 3 -type d || true
           APP=$(find build/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "LiveClock.app" | head -1)
           BUNDLE_ID=$(sed -n 's/.*PRODUCT_BUNDLE_IDENTIFIER: *//p' project.yml | head -1 | tr -d ' ')
           echo "Installing $APP ($BUNDLE_ID)"
@@ -166,7 +176,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Select latest usable Xcode
         run: |

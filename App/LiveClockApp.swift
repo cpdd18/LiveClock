@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct LiveClockApp: App {
     @StateObject private var settings = ClockSettings.shared
-    @StateObject private var manager = ClockActivityManager()
+    @StateObject private var manager = ClockActivityManager.shared
     @StateObject private var pipManager = PiPClockManager.shared
 
     var body: some Scene {

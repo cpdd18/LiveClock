@@ -129,6 +129,9 @@ LiveClock/
 | PiP 窗内时间不随秒跳动 | 设计节拍为每秒一帧；后台可能被系统节流 | 精确秒表看主界面；小窗用于瞥一眼时:分 |
 | Extension 编译报 `NSExtensionPointIdentifier` 缺失 | Widget `Info.plist` 键被删 | 保留 `com.apple.widgetkit-extension` |
 | archive 报 Info.plist 生成冲突 | 手写 plist 时开启了自动生成 | 不要在 `project.yml` 设置 `GENERATE_INFOPLIST_FILE: YES` |
+| 模拟器构建 `exit code 65`（Build app for simulator 步骤） | 常见为签名配置污染、私有初始化器被外部调用、KVO keyPath 不合法 | 本仓库已内置加固：模拟器命令显式清空签名键、`GENERATE_INFOPLIST_FILE=NO`、统一走 `shared` 单例、移除 KVO；若重跑仍红，展开失败步骤复制 `error:` 红色原文发来定位 |
+| `Node.js 20 is deprecated` 黄色警告 | actions/checkout 旧版本运行时提示 | 非致命错误；仓库已升级 `@v5`，忽略不影响构建结果 |
+| macOS arm64 排队提示 | runner 容量紧张 | 环境提示，排队后自动继续，无需处理 |
 
 ## 8. 许可与免责
 

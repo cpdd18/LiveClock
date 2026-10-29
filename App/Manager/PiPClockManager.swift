@@ -20,15 +20,15 @@ import CoreGraphics
 final class PiPClockManager: NSObject, ObservableObject {
     static let shared = PiPClockManager()
 
-    @Published nonisolated(unsafe) private(set) var pipActive = false
-    @Published nonisolated(unsafe) private(set) var pipPossible = false
+    @Published private(set) var pipActive = false
+    @Published private(set) var pipPossible = false
 
-    /// 渲染层：既是帧数据来源，也是 PiP ContentSource。UIKit 层本身线程安全，
-    /// 由 UIViewRepresentable 在主线程读写 frame。
-    nonisolated let displayLayer = AVSampleBufferDisplayLayer()
-    private nonisolated(unsafe) var pipController: AVPictureInPictureController?
-    private nonisolated(unsafe) var timer: Timer?
-    private nonisolated(unsafe) var skin: SkinID = .midnight
+    /// 渲染层：既是帧数据来源，也是 PiP ContentSource。
+    /// 所有 UIKit 访问都发生在主线程（UIViewRepresentable 与按钮动作均为主线程回调）。
+    let displayLayer = AVSampleBufferDisplayLayer()
+    private var pipController: AVPictureInPictureController?
+    private var timer: Timer?
+    private var skin: SkinID = .midnight
 
     private override init() {
         super.init()
@@ -41,11 +41,6 @@ final class PiPClockManager: NSObject, ObservableObject {
                 playbackDelegate: nil)
             let controller = AVPictureInPictureController(contentSource: source)
             controller.canStartPictureInPictureAutomaticallyFromInline = true
-            controller.addObserver(
-                self,
-                forKeyPath: #keyPath(AVPictureInPictureController.isPictureInPictureActive),
-                options: [.new],
-                context: nil)
             self.pipController = controller
         }
         activateAudioSession()
@@ -55,23 +50,14 @@ final class PiPClockManager: NSObject, ObservableObject {
         timer?.invalidate()
     }
 
-    // MARK: KVO
-    override func observeValue(forKeyPath keyPath: String?,
-                               of object: Any?,
-                               change: [NSKeyValueChangeKey: Any]?,
-                               context: UnsafeMutableRawPointer?) {
-        guard keyPath == #keyPath(AVPictureInPictureController.isPictureInPictureActive),
-              let active = change?[.newKey] as? Bool else { return }
-        Task { @MainActor in self.pipActive = active }
-    }
-
     // MARK: 生命周期
     func start() {
-        guard pipPossible, pipController != nil else { return }
+        guard pipPossible, let controller = pipController else { return }
         startFrameLoop()
-        if let controller = pipController, !controller.isPictureInPictureActive {
+        if !controller.isPictureInPictureActive {
             controller.startPictureInPicture()
         }
+        pipActive = true
     }
 
     func stop() {
@@ -79,6 +65,7 @@ final class PiPClockManager: NSObject, ObservableObject {
         timer = nil
         pipController?.stopPictureInPicture()
         displayLayer.flush()
+        pipActive = false
     }
 
     func configure(skin: SkinID) {
