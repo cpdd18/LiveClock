@@ -82,8 +82,8 @@ LiveClock/
 
 1. 开发者门户注册 2 个 App ID + 1 个 App Group 并互相关联；注册本机设备 UDID；生成 Apple Development 证书与 2 份 Development 描述文件。
 2. Windows 上用 `scripts/make_certificate_windows.py` 生成 CSR 与 legacy 格式 `dist.p12`。
-3. 首次可先触发 `Build Signed IPA` 选 **compile-only** 模式（无需证书，模拟器 Debug 构建）验证代码编译通过；再在 Settings → Secrets 配置 7 个 Secret（见指南清单）。
-4. 切换 **signed-ipa** 模式触发构建（导出方式默认 `development` 自用调试直装；多设备分发时门户加入设备后选 `ad-hoc`），下载产物 IPA。
+3. 首次先触发 `Build Signed IPA`：`compile-only` 验证能否编译；`simulator-preview` 自动在模拟器启动并截图，免证书自测 UI（见下方「免签名自测」）。
+4. 再在 Settings → Secrets 配置 7 个 Secret（见指南清单），切换 **signed-ipa** 模式触发构建（导出方式默认 `development` 自用调试直装；多设备分发时门户加入设备后选 `ad-hoc`），下载产物 IPA。
 5. Windows 用爱思助手 / iMazing 连接 iPhone 直接安装已签名 IPA。
 
 ### 路线 B（兜底）：临时借一台 Mac 本地跑通
@@ -94,6 +94,18 @@ LiveClock/
 2. 把 `project.yml` 中 `CODE_SIGN_STYLE: Manual` 改为 `Automatic`，并删除两个 target 下的 `CODE_SIGN_IDENTITY`、`PROVISIONING_PROFILE_SPECIFIER` 行。
 3. 执行 `xcodegen generate`，用 Xcode 打开 `LiveClock.xcodeproj`，Signing 页选自己团队，连接 iPhone 直接 Run。
 4. 跑通后再回到路线 A 把签名材料迁到 CI。
+
+### 免签名自测（模拟器截图，无需开发者账号）
+
+不想先配证书时，触发 **`simulator-preview`** 模式：云端 Mac 自动编译 Debug 版 → 启动 iPhone 模拟器 → 安装并启动 App → 把界面截图作为 Artifact 上传，下载即可查看主界面布局、数字时钟与皮肤配色。
+
+模拟器限制（务必知悉）：
+
+- **画中画（PiP）模拟器不支持**，界面会显示“不支持画中画”提示，属正常，必须真机验证；
+- 灵动岛为模拟渲染，动画、手感与真机有差异；
+- 截图是自动启动后的静态画面，不能手动点按切换皮肤；皮肤切换效果以代码逻辑为准，真机再验。
+
+> 真机上不存在“零签名运行”：最低成本是免费 Apple ID 用 Sideloadly 侧载（7 天有效、到期重签），但仍需先有编译产物；正式长期使用走付费账号 signed-ipa 最省事。
 
 ## 6. 自定义指南
 

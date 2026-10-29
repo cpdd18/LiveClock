@@ -2,12 +2,14 @@ name: Build Signed IPA
 
 # 在 Windows 上只维护源码；触发本工作流后，云端 macOS runner 完成编译与签名。
 #
-# 两种模式（Run workflow 时选择）：
-#   compile-only  无证书也能跑：模拟器 Debug 构建，只验证代码能否编译通过（不产出 IPA）
-#   signed-ipa    导入证书与描述文件，archive + export 产出签名 IPA（需先配好 Secrets）
+# 三种模式（Run workflow 时选择）：
+#   compile-only       无证书：模拟器 Debug 构建，只验证代码能否编译通过
+#   simulator-preview  无证书：构建并在模拟器启动 App，自动截图上传，用于自测 UI
+#   signed-ipa         导入证书与描述文件，archive + export 产出签名 IPA（需先配好 Secrets）
 #
 # 触发方式（Windows 装 GitHub CLI 后）：
 #   gh workflow run build-ipa.yml -f mode=compile-only
+#   gh workflow run build-ipa.yml -f mode=simulator-preview
 #   gh workflow run build-ipa.yml -f mode=signed-ipa -f build_number=1
 # 或在仓库 Actions 页面手动点 Run workflow。
 
@@ -15,11 +17,12 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "compile-only=仅验证编译（无需证书）；signed-ipa=签名导出 IPA"
+        description: "compile-only=编译校验；simulator-preview=模拟器截图自测；signed-ipa=签名导出 IPA"
         default: compile-only
         type: choice
         options:
           - compile-only
+          - simulator-preview
           - signed-ipa
       build_number:
         description: "构建号 CFBundleVersion（整数，递增，仅 signed-ipa 使用）"
@@ -81,6 +84,80 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             -derivedDataPath build/derivedData
+
+  # ---------- 模式：模拟器预览截图（无证书，自测 UI 布局） ----------
+  simulator-preview:
+    if: ${{ inputs.mode == 'simulator-preview' }}
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select latest usable Xcode
+        run: |
+          set -euo pipefail
+          chosen=""
+          for app in $(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -Vr); do
+            if [ -d "$app/Contents/Developer" ]; then chosen="$app"; break; fi
+          done
+          if [ -z "$chosen" ]; then chosen="/Applications/Xcode.app"; fi
+          sudo xcode-select -s "$chosen/Contents/Developer"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Boot a usable iPhone simulator
+        run: |
+          set -euo pipefail
+          sim_name=$(xcrun simctl list devices available | grep -oE "iPhone [0-9]+ Pro Max" | sort -Vr | head -1)
+          if [ -z "$sim_name" ]; then
+            sim_name=$(xcrun simctl list devices available | grep -oE "iPhone [0-9]+" | sort -Vr | head -1)
+          fi
+          udid=$(xcrun simctl list devices available | grep "$sim_name" | head -1 | grep -oE "[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{20,}")
+          echo "SIM_NAME=$sim_name" >> "$GITHUB_ENV"
+          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
+          echo "Booting $sim_name ($udid)"
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+
+      - name: Build app for simulator
+        run: |
+          set -euo pipefail
+          xcodebuild build \
+            -scheme LiveClock \
+            -destination "platform=iOS Simulator,name=$SIM_NAME" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath build/dd
+
+      - name: Install, launch and capture screenshots
+        run: |
+          set -euo pipefail
+          APP=$(find build/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "LiveClock.app" | head -1)
+          BUNDLE_ID=$(sed -n 's/.*PRODUCT_BUNDLE_IDENTIFIER: *//p' project.yml | head -1 | tr -d ' ')
+          echo "Installing $APP ($BUNDLE_ID)"
+          xcrun simctl install "$SIM_UDID" "$APP"
+          xcrun simctl launch "$SIM_UDID" "$BUNDLE_ID"
+          sleep 5
+          mkdir -p shots
+          xcrun simctl io "$SIM_UDID" screenshot shots/01-home.png
+          sleep 3
+          xcrun simctl io "$SIM_UDID" screenshot shots/02-home-after-3s.png
+          ls -la shots
+
+      - name: Upload simulator screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiveClock-simulator-screenshots
+          path: shots/*.png
+          retention-days: 30
 
   # ---------- 模式二：签名导出 IPA（需要证书与描述文件 Secrets） ----------
   build:

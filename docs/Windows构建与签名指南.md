@@ -123,6 +123,17 @@ gh run watch
 
 绿色通过说明工程可编译；失败则看日志报错对照 README 第 7 节排查表。
 
+### 4.1b 模拟器截图自测（无需证书、无需付费账号）
+
+```bash
+gh workflow run build-ipa.yml -f mode=simulator-preview
+gh run watch
+```
+
+运行完成后，Artifacts 下载 `LiveClock-simulator-screenshots`，内含启动后的界面截图，用于核对布局、字体、配色。
+
+注意：模拟器不支持画中画（PiP），该按钮区域会显示“不支持”提示，属正常；灵动岛为模拟渲染；截图不能手动交互。PiP 与真机手感必须在签名装机后验证。
+
 ### 4.2 再跑 signed-ipa（产出签名 IPA）
 
 Secrets 配好后：
