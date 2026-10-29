@@ -1,0 +1,21 @@
+# 构建产物
+build/
+DerivedData/
+*.xcarchive
+*.ipa
+*.app
+*.appex
+
+# 签名材料（绝不能提交）
+*.p12
+*.mobileprovision
+*.pem
+*.b64
+private_key.pem
+csr.csr
+
+# Xcode 生成工程（由 xcodegen 每次重新生成）
+*.xcodeproj/
+
+# 系统文件
+.DS_Store

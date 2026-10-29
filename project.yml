@@ -1,0 +1,62 @@
+# XcodeGen 工程描述文件。
+# 不在仓库中保存 .xcodeproj（pbxproj 不适合在 Windows 上手改）；
+# 云端 Mac 构建时执行 `xcodegen generate` 生成工程，再 xcodebuild archive。
+#
+# 占位标识符（替换为你付费开发者账号下的真实值，详见 README“占位符替换清单”）：
+#   com.example.liveclock          主 App Bundle ID
+#   com.example.liveclock.widget   Widget Extension Bundle ID
+#   group.com.example.liveclock    App Group
+#
+# 签名相关环境变量由 GitHub Actions 注入（见 .github/workflows/build-ipa.yml）：
+#   DEVELOPMENT_TEAM / APP_PROFILE_NAME / WIDGET_PROFILE_NAME
+
+name: LiveClock
+
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
+
+targets:
+  LiveClock:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+    resources:
+      - path: Resources/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.liveclock
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/LiveClock.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_IDENTITY: ${APP_SIGN_IDENTITY}
+        PROVISIONING_PROFILE_SPECIFIER: ${APP_PROFILE_NAME}
+    dependencies:
+      - target: ClockWidget
+        embed: true
+
+  ClockWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.liveclock.widget
+        INFOPLIST_FILE: Widget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Widget/ClockWidget.entitlements
+        SKIP_INSTALL: YES
+        CODE_SIGN_IDENTITY: ${WIDGET_SIGN_IDENTITY}
+        PROVISIONING_PROFILE_SPECIFIER: ${WIDGET_PROFILE_NAME}
